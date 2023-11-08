@@ -1,0 +1,95 @@
+ORG 100h ;The program starts at offset 100h.
+.data
+Entry db "Enter the Amount of Paid Money or Enter '0' if you want to leave: $" 
+wrongEntrymessage db "Not Specified value $"
+Expirymessage db "Expired... $ " 
+.code
+MOV AX, @data ; Load the data segment address into AX.
+MOV DS, AX ; Set DS to the data segment, initializing DS.
+Userinput:
+; Displaying Input Sentence by calling DOS Interrupt 21h, function 09h, which writes a 
+string.
+ LEA DX, Entry ; Load the address of the "Entry" string into DX.
+ MOV AH, 09h ; Set AH to 09h (print string).
+ INT 21h ; Call DOS Interrupt 21h.
+ MOV DL, 10 ; Initialize DL to 10.
+ MOV BL, 0 ; Initialize BL to 0.
+scanNum:
+ MOV AH, 01h ; Set AH to 01h (read character).
+ INT 21h ; Call DOS Interrupt 21h.
+ CMP AL, 13 ; Check if the input character is 'Enter' (ASCII 13).
+ JE Return ; If it is, jump to the "Return" label.
+ MOV AH, 0 ; Clear AH.
+ SUB AL, 48 ; Convert ASCII character to a numeric value.
+ MOV CL, AL ; Store the current value in CL.
+ MOV AL, BL ; Load the previous value from BL into AL.
+ MUL DL ; Multiply the previous value by 10.
+ ADD AL, CL ; Add the new value to the previous value.
+ MOV BL, AL ; Store the result in BL. 
+ JMP scanNum ; Continue the loop.
+Return: 
+ MOV AX, 0
+ OUT 199, AX ; Output 0 to port 199. 
+ CMP BL, 05h ; Compare BL to 5.
+ JNE if10 ; If not equal, jump to "if10."
+ MOV CX, 4Ch ; 5 seconds delay (using CX and DX to set up the delay).
+ MOV DX, 4B40h
+ JMP endif
+if10:
+ CMP BL, 0Ah ; Compare BL to 10.
+ JNE if20 ; If not equal, jump to "if20."
+ MOV CX, 1C9h ; 30 seconds delay.
+ MOV DX, 0C380h
+ JMP endif
+if20:
+ CMP BL, 14h ; Compare BL to 20.
+ JNE wrongentry ; If not equal, jump to "wrongentry."
+ MOV CX, 393h ; 60 seconds delay.
+ MOV DX, 8700h
+ JMP endif
+endif: 
+ ; Newline.
+ MOV DX, 13
+ MOV AH, 2
+ INT 21h
+ MOV DX, 10
+ MOV AH, 2
+ INT 21h
+ 
+ ; Wait function (delay execution).
+ MOV AH, 86h
+ INT 15h
+ ; Display "Expirymessage."
+ LEA DX, Expirymessage
+ MOV AH, 09h
+ INT 21h
+ MOV AX, 1
+ OUT 199, AX ; Output 1 to port 199.
+ JMP Final ; Jump to "Final."
+wrongentry:
+ CMP BL, 0h ; Compare BL to 0.
+ JE END ; If equal, jump to "END." 
+ 
+ ; Newline.
+ MOV DX, 13
+ MOV AH, 2
+ INT 21h
+ MOV DX, 10
+ MOV AH, 2
+ INT 21h 
+ 
+ LEA DX, wrongEntrymessage
+ MOV AH, 09h
+ INT 21h
+Final:
+ 
+ ; Newline.
+ MOV DX, 13
+ MOV AH, 2
+ INT 21h
+ MOV DX, 10
+ MOV AH, 2
+ INT 21h
+ CALL Userinput ; Restart the input loop.
+END:
+ HLT ; Terminate the program.
